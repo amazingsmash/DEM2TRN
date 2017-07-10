@@ -3,7 +3,7 @@
 
 function [mx, my, mz] = TRN2DEM(x, y, z, ... %DEM
                                 TRNresX, TRNresY, ... %TRN size in mesh vertices
-                                tileSize, ... %Lenght of tile side in mesh vertices (including frame)
+                                tileSize, ... %Length of tile side in mesh vertices (including frame)
                                 f) % Frame width in mesh vertices
                             
 showAnimation = 0; %Showing intermediate results
@@ -42,14 +42,11 @@ for i = 1:innerWindowSize-1:TRNresX
             centerTileYs = find(tileYs == j) : length(tileYs);
         end
         
-        
-        disp(tileXs);
-        disp(tileYs);
-        disp(' ');
-        
+        %Mesh tile
         pmx = mx(tileXs, tileYs);
         pmy = my(tileXs, tileYs);
         
+        %DEM tile
         select = x >= min(pmx(:)) & x <= max(pmx(:)) & ...
               y >= min(pmy(:)) & y <= max(pmy(:));
         demSizeX = max(sum(select));
@@ -59,19 +56,17 @@ for i = 1:innerWindowSize-1:TRNresX
         DEMtileY = reshape(y(select), demSizeX, demSizeY);
         DEMtileZ = reshape(z(select), demSizeX, demSizeY);
 
+        %Adjusting tile
         pmz = TRN2DEMTileAdjustment(DEMtileX, DEMtileY, DEMtileZ, pmx, pmy);
 
+        %Extracing inner window
         pmx = pmx(centerTileXs,centerTileYs);
         pmy = pmy(centerTileXs,centerTileYs);
         pmz = pmz(centerTileXs,centerTileYs);
 
-        %Finding in supermatrix
+        %Finding window in supermatrix
         pos = ismember(mx, pmx) & ismember(my, pmy);
         pos = find(pos);
-        mzChunck = reshape(mz(pos), size(pmz));
-        
-        %Calculating seam error
-        seam = find(~isnan(mzChunck));
         
         %Display
         if (showAnimation)
@@ -80,8 +75,7 @@ for i = 1:innerWindowSize-1:TRNresX
             figure(animFigure);
             surf(mx, my, mz);
             axis(myaxis);
-            fprintf('Placing patch Mean Error: %f, Max Error: %f, SeamMeanError: %f\n', meanError, maxError, meanSeamError);
-            pause(0.3);
+            pause(0.3); %Frame pause
         end
         
         %Data aggregation
@@ -95,16 +89,14 @@ end
 mz = summz ./ countmz; %Averaging
 end
 
+%Tile adjustment algorithm
+%TRN heights as output
 function mz = TRN2DEMTileAdjustment(x, y, z, mx, my)
-
-global updatedPoint;
-updatedPoint = 0;
 
 if std(z) == 0
     mz = repmat(z(1,1), size(mx));
     return;
 end
-
 
 [A, B] = createLinearSystemForDEMAdjustment(x, y, z, mx, my);
 
@@ -149,9 +141,9 @@ finalError = mean(abs(A * X - B));
 fprintf('Final Mean Error: %f, (Gain: %E) \n', mean(abs(A * X - B)), iniError -finalError);
 end
 
+%Update vertex height considering previous error
+%New mesh and new mean error as result
 function [X, meanErrorGain] = updateVertex(A, B, X, errors, i)
-global updatedPoint;
-updatedPoint = updatedPoint +1;
 lastError = mean(abs(A * X - B));
 
 prevValueI = X(i);
@@ -161,8 +153,6 @@ minError = mean(abs(A * X - B));
 
 if minError < lastError
     meanErrorGain = lastError - minError;
-    %fprintf('(%d) Modifiyed point %d, Last Error: %0.2f, New Error: %0.2f (%8.2E)\n',...
-    %       updatedPoint, i, lastError, minError, meanErrorGain);
 else
     X(i) = prevValueI;
     meanErrorGain = 0;
@@ -181,6 +171,8 @@ for i = 1:size(A, 2) %All points in MZ
 end
 
 end
+
+%Creating linear system A x X = B describing adjustment errors
 function [A, B] = createLinearSystemForDEMAdjustment(x, y, z, mx, my)
 
 if sum(size(z) ~= size(x)) || sum(size(z)~= size(y)) || sum(size(mx) ~= size(my))
@@ -222,10 +214,8 @@ ut = ut + 1; %1 = upper triangle, 2 = lower triangle
 %Barycentric coordinates of all DEM points
 ps = [dqx(:), dqy(:)];
 bary = cartesianToBarycentric(TR,ut(:),ps);
-    
-if min(min(bary)) < 0
-    disp('ERROR'); %All barycentrinc coordinates must be >=0
-end
+
+%All barycentrinc coordinates must be >=0
 
 %Composing A
 axs = 1:length(bary); %Vertex index
@@ -249,7 +239,7 @@ gb = bary ~= 0;
 axs = axs(gb);
 ays = ays(gb);
 bary = bary(gb);
-A = sparse(axs, ays, bary, nrow, ncol);
+A = sparse(axs, ays, bary, nrow, ncol); %Using matlabs sparse matrix
 
 %A*X=B
 B = sparse(1:numel(z), 1, z(:));
