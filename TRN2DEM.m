@@ -1,5 +1,5 @@
 %TRN adjustment to DEM data
-%Code by Jose Miguel Santana
+%Code by Jose Miguel Santana Nunez
 
 function [mx, my, mz] = TRN2DEM(x, y, z, ... %DEM
                                 TRNresX, TRNresY, ... %TRN size in mesh vertices
