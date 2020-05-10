@@ -1,7 +1,7 @@
 %TRN adjustment to DEM data
 %Code by Jose Miguel Santana Nunez
 
-function [mx, my, mz] = TRN2DEM(x, y, z, ... %DEM
+function [mx, my, mz] = DEM2TRN(x, y, z, ... %DEM
                                 TRNresX, TRNresY, ... %TRN size in mesh vertices
                                 tileSize, ... %Length of tile side in mesh vertices (including frame)
                                 f) % Frame width in mesh vertices
@@ -57,7 +57,7 @@ for i = 1:innerWindowSize-1:TRNresX
         DEMtileZ = reshape(z(select), demSizeX, demSizeY);
 
         %Adjusting tile
-        pmz = TRN2DEMTileAdjustment(DEMtileX, DEMtileY, DEMtileZ, pmx, pmy);
+        pmz = DEM2TRNTileAdjustment(DEMtileX, DEMtileY, DEMtileZ, pmx, pmy);
 
         %Extracing inner window
         pmx = pmx(centerTileXs,centerTileYs);
@@ -91,7 +91,7 @@ end
 
 %Tile adjustment algorithm
 %TRN heights as output
-function mz = TRN2DEMTileAdjustment(x, y, z, mx, my)
+function mz = DEM2TRNTileAdjustment(x, y, z, mx, my)
 
 if std(z) == 0
     mz = repmat(z(1,1), size(mx));
